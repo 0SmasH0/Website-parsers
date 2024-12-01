@@ -82,8 +82,8 @@ def data_preparation(parameters: dict, user_count: int) -> dict:
     with tqdm(total=user_count, desc="Загрузка объявлений",
               bar_format="{desc}: {percentage:3.0f}% |{bar}| {n_fmt}/{total_fmt}", ncols=80) as pbar:
         while True:
+            flag_end = 0
             data = requests.get('https://api.kufar.by/search-api/v2/search/rendered-paginated', params=parameters)
-
             json_data = data.json()['ads']
             pr_on_page = {'Название': [], 'Цена': [], 'Категория': [], 'Состояние': [], 'Ссылка': []}
 
@@ -112,10 +112,14 @@ def data_preparation(parameters: dict, user_count: int) -> dict:
                 pbar.update(1)
 
                 if count_product_in_base == user_count:
-                    return prod
+                    flag_end = 1
+                    break
 
             for key in prod.keys():
                 prod[key] += pr_on_page[key]
+
+            if flag_end:
+                return prod
 
             for i in data.json()['pagination']['pages']:
                 if i['label'] == 'next':
@@ -134,6 +138,7 @@ def create_dir(name_dir: str):
 
 def download_in_excel(items: dict, filename: str, name_dir: str):
     create_dir(name_dir)
+    
     product = pd.DataFrame(items)
     writer = pd.ExcelWriter(f'{name_dir}/{filename} ({dt.datetime.now().strftime("%Y.%m.%d %H-%M-%S")}).xlsx')
     product.to_excel(writer, sheet_name='kufar', index=False)
